@@ -4,7 +4,7 @@ Interactive 5-year financial model for the RelVersiv VRx pain management platfor
 
 ## Live Model
 
-**[→ Open Stress Tester](https://simpventive.github.io/relversiv-model/)**
+**[→ Open Stress Tester](https://simpventive.github.io/RelVersiv_FinModel/)**
 
 
 
