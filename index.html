@@ -1,1 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelVersiv VRx · Financial Stress Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  /* Left panel — dark navy */
+  --lbg:#040e1f; --lbg2:#061224; --lbg3:#0a1830; --lcard:#0b1a30;
+  --lborder:#162d52; --lborder2:#0d2244;
+  /* Right panel — clean off-white */
+  --rbg:#f4f6fa; --rbg2:#e8ecf4; --rcard:#ffffff;
+  --rborder:#cdd5e4; --rborder2:#dde3ef;
+  --rtext:#1a2540; --rtext2:#4a5678; --rmuted:#8a96b0;
+  /* Accents */
+  --teal:#00c4a7; --teal2:#009d86; --yellow:#e8a800; --purple:#8855d0;
+  --red:#d93856; --green:#1aa866; --blue:#2e7fd4;
+  --muted:#5a7090;
+  --mono:'IBM Plex Mono',monospace; --sans:'Space Grotesk',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--lbg);color:#d0e4f8;font-family:var(--sans);min-height:100vh;}
 
+/* ── Header */
+.hdr{background:linear-gradient(135deg,#030c1a,#071020);border-bottom:1px solid var(--lborder);padding:11px 22px;display:flex;align-items:center;gap:14px;}
+.hdr-logo{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--teal);letter-spacing:2px;}
+.hdr-sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-pill{background:rgba(0,196,167,.12);border:1px solid var(--teal);color:var(--teal);font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:20px;letter-spacing:1px;}
+.export-btn{background:rgba(232,168,0,.12);border:1px solid var(--yellow);color:var(--yellow);font-family:var(--mono);font-size:9px;padding:5px 14px;border-radius:6px;letter-spacing:1px;cursor:pointer;transition:all .2s;}
+.export-btn:hover{background:rgba(232,168,0,.25);}
+
+/* ── Tabs */
+.tabs{display:flex;gap:2px;background:#040e1f;border-bottom:2px solid var(--lborder);padding:0 22px;}
+.tab{padding:10px 16px;font-size:11px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
+.tab.active{color:var(--teal);border-color:var(--teal);}
+.tab:hover:not(.active){color:#8aabcc;}
+
+/* ── Pages */
+.page{display:none;padding:16px 20px;gap:14px;}
+.page.active{display:flex;flex-direction:column;}
+
+/* ── KPI strip */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.kpi{background:var(--rcard);border:2px solid var(--rborder);border-radius:10px;padding:13px 16px;}
+.kpi-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--rmuted);margin-bottom:4px;text-transform:uppercase;}
+.kpi-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--rtext);}
+.kpi-note{font-size:10px;color:var(--rtext2);margin-top:3px;}
+.kpi.teal{border-color:var(--teal);} .kpi.teal .kpi-val{color:var(--teal2);}
+.kpi.yel{border-color:var(--yellow);} .kpi.yel .kpi-val{color:var(--yellow);}
+.kpi.purp{border-color:var(--purple);} .kpi.purp .kpi-val{color:var(--purple);}
+.kpi.blue{border-color:var(--blue);} .kpi.blue .kpi-val{color:var(--blue);}
+.kpi.red{border-color:var(--red);} .kpi.red .kpi-val{color:var(--red);}
+
+/* ── Two-column layout */
+.two-col{display:grid;grid-template-columns:330px 1fr;gap:14px;align-items:start;}
+
+/* ── LEFT PANEL (dark) */
+.left-panel{background:var(--lcard);border:1px solid var(--lborder);border-radius:10px;padding:15px 16px;}
+.left-panel-title{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--teal);text-transform:uppercase;margin-bottom:11px;}
+
+/* ── RIGHT PANEL (light) */
+.right-panel{background:var(--rcard);border:1px solid var(--rborder);border-radius:10px;padding:15px 18px;}
+.right-panel-title{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--blue);text-transform:uppercase;margin-bottom:11px;}
+
+/* ── Year selector */
+.yr-radios{display:flex;gap:5px;flex-wrap:wrap;}
+.yr-radio{position:relative;}
+.yr-radio input[type=radio]{position:absolute;opacity:0;width:0;height:0;}
+.yr-radio label{display:block;padding:5px 14px;border-radius:20px;border:1px solid var(--lborder);background:transparent;color:var(--muted);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .2s;user-select:none;}
+.yr-radio input[type=radio]:checked + label{background:rgba(0,196,167,.2);border-color:var(--teal);color:var(--teal);font-weight:700;}
+.yr-radio label:hover{color:#8aabcc;border-color:#8aabcc;}
+
+/* ── Sliders (left panel) */
+.slider-row{margin-bottom:11px;}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
+.sl-name{font-size:10.5px;color:#c0d4ee;}
+.sl-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--teal);}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;border-radius:2px;background:var(--lborder);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--teal);cursor:pointer;}
+.sl-range{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
+
+/* ── Section dividers (left) */
+.sect-div{display:flex;align-items:center;gap:7px;margin:9px 0 4px;}
+.sect-div span{font-family:var(--mono);font-size:9px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+.sect-div::after{content:'';flex:1;height:1px;background:var(--lborder);}
+
+/* ── Salary editor */
+.sal-editor-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--lborder2);}
+.sal-role{font-size:10.5px;color:#c0d4ee;flex:1;}
+.sal-controls{display:flex;align-items:center;gap:4px;}
+.sal-btn{width:20px;height:20px;border-radius:4px;border:1px solid var(--lborder);background:var(--lbg3);color:var(--teal);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:var(--mono);}
+.sal-btn:hover{background:rgba(0,196,167,.2);border-color:var(--teal);}
+.sal-val-display{font-family:var(--mono);font-size:11px;color:var(--teal);width:55px;text-align:right;font-weight:600;}
+.sal-lacs{font-size:9px;color:var(--muted);margin-left:2px;}
+
+/* ── G&A / CT manual inputs */
+.ga-ct-section{margin-top:8px;}
+.ga-ct-row{border:1px solid var(--lborder2);border-radius:7px;padding:9px 11px;margin-bottom:8px;background:rgba(0,196,167,.04);}
+.ga-ct-title{font-family:var(--mono);font-size:9px;color:var(--teal);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;}
+.ga-ct-yr-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.ga-ct-yr-lbl{font-size:10px;color:var(--muted);width:22px;font-family:var(--mono);}
+.ga-ct-inp{background:var(--lbg3);border:1px solid var(--lborder);color:var(--teal);font-family:var(--mono);font-size:11px;width:72px;padding:3px 7px;border-radius:4px;text-align:right;}
+.ga-ct-inp:focus{outline:none;border-color:var(--teal);}
+.ga-ct-unit{font-size:9px;color:var(--muted);}
+.ga-growth-row{display:flex;align-items:center;gap:8px;margin-top:5px;}
+.ga-growth-label{font-size:10px;color:var(--muted);}
+.ga-growth-inp{background:var(--lbg3);border:1px solid var(--lborder);color:var(--teal);font-family:var(--mono);font-size:11px;width:55px;padding:3px 6px;border-radius:4px;text-align:center;}
+.ga-growth-inp:focus{outline:none;border-color:var(--teal);}
+
+/* ── RIGHT PANEL TABLE */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead tr{background:var(--rbg2);}
+th{padding:7px 9px;text-align:right;font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--rmuted);text-transform:uppercase;border-bottom:2px solid var(--rborder);}
+th:first-child{text-align:left;}
+td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--rborder2);color:var(--rtext2);font-family:var(--mono);font-size:10.5px;}
+td:first-child{text-align:left;color:var(--rtext);font-family:var(--sans);font-size:11px;}
+tr.sh td{background:#e8f0fb;color:var(--blue);font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:4px 9px;font-weight:600;}
+tr.tot td{background:#f0f4fc;font-weight:700;color:var(--rtext);border-top:2px solid var(--rborder);border-bottom:none;font-size:11px;}
+td.neg{color:var(--red)!important;} td.pos{color:var(--green)!important;}
+tr.expandable{cursor:pointer;}
+tr.expandable td:first-child::before{content:'▶ ';font-size:9px;color:var(--blue);}
+tr.expandable.open td:first-child::before{content:'▼ ';}
+tr.sub-row td{background:#f8faff;font-size:10px;padding-left:24px;}
+tr.sub-row td:first-child{color:var(--rtext2);}
+tr.sub-row{display:none;}
+tr.sub-row.vis{display:table-row;}
+
+/* Active year column highlight */
+.yr-active-col{background:rgba(0,196,167,.1)!important;}
+th.yr-active{color:var(--teal)!important;background:rgba(0,196,167,.12)!important;}
+
+/* ── Waterfall (val tab) */
+.waterfall{display:flex;flex-direction:column;gap:6px;}
+.wf-row{display:flex;align-items:center;gap:8px;}
+.wf-lbl{width:170px;font-size:10px;color:var(--rtext2);flex-shrink:0;text-align:right;font-family:var(--mono);}
+.wf-bar{height:20px;border-radius:3px;display:flex;align-items:center;padding:0 7px;font-family:var(--mono);font-size:9.5px;font-weight:700;white-space:nowrap;transition:width .4s ease;min-width:4px;}
+
+/* ── Help */
+.help-section{margin-bottom:18px;}
+.help-h{font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--rborder2);padding-bottom:6px;margin-bottom:10px;}
+.help-body{font-size:11.5px;line-height:1.75;color:var(--rtext2);}
+.help-body b{color:var(--rtext);}
+.formula-box{background:#f0f4fc;border:1px solid var(--rborder);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--blue);margin:6px 0;}
+.gloss-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.gloss-card{background:var(--rbg);border:1px solid var(--rborder);border-radius:7px;padding:10px;}
+.gloss-term{font-family:var(--mono);font-size:10px;font-weight:700;margin-bottom:4px;}
+.gloss-def{font-size:10px;color:var(--rmuted);line-height:1.5;}
+
+/* ── Misc */
+.note{background:rgba(0,196,167,.07);border:1px solid rgba(0,196,167,.25);border-radius:6px;padding:7px 11px;font-size:10.5px;color:#8aabcc;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--lbg);}
+::-webkit-scrollbar-thumb{background:var(--lborder);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-logo">RELVERSIV VRx</div>
+    <div class="hdr-sub">Financial Stress Tester · v6.0</div>
+  </div>
+  <div class="hdr-right">
+    <button class="export-btn" onclick="exportXLS()">⬇ Export XLS</button>
+    <div class="hdr-pill">LIVE MODEL</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('pl')">P&amp;L Model</div>
+  <div class="tab" onclick="showTab('val')">Valuation</div>
+  <div class="tab" onclick="showTab('assump')">Assumptions</div>
+  <div class="tab" onclick="showTab('help')">? Help</div>
+</div>
+
+<!-- ═══ P&L TAB ═══ -->
+<div id="tab-pl" class="page active">
+  <div class="kpi-row" id="kpi-row"></div>
+  <div class="two-col">
+    <!-- LEFT DARK PANEL -->
+    <div>
+      <div class="left-panel">
+        <div class="left-panel-title">▸ Stress Test Controls</div>
+        <div class="sect-div"><span>Market &amp; Pricing</span></div>
+        <div id="sl-market"></div>
+        <div class="sect-div"><span>Operations</span></div>
+        <div id="sl-ops"></div>
+        <div class="sect-div"><span>Capital</span></div>
+        <div id="sl-cap"></div>
+        <div class="sect-div"><span>View Year</span></div>
+        <div class="yr-radios" id="yr-radios"></div>
+      </div>
+      <div style="height:11px"></div>
+      <div class="left-panel">
+        <div class="left-panel-title">▸ Salary Configuration (₹ Lacs / year)</div>
+        <div id="sal-editor"></div>
+        <div class="note" style="margin-top:10px;font-size:10px">
+          ±5L steps. Values are annual CTC. Grow 10%/yr each year from Y1 base.
+        </div>
+      </div>
+      <div style="height:11px"></div>
+      <div class="left-panel">
+        <div class="left-panel-title">▸ G&amp;A &amp; Clinical Trials (₹ Lacs)</div>
+        <div class="ga-ct-section" id="ga-ct-section"></div>
+      </div>
+    </div>
+    <!-- RIGHT LIGHT PANEL -->
+    <div class="right-panel">
+      <div class="right-panel-title">▸ P&amp;L Statement (Rs Crores)</div>
+      <div class="tbl-wrap"><table id="pl-table"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ VALUATION TAB ═══ -->
+<div id="tab-val" class="page">
+  <div class="kpi-row" id="val-kpis"></div>
+  <div class="two-col">
+    <div class="left-panel">
+      <div class="left-panel-title">▸ Valuation Drivers</div>
+      <div id="sl-val"></div>
+    </div>
+    <div class="right-panel">
+      <div class="right-panel-title">▸ DCF Waterfall (Rs Crores)</div>
+      <div class="waterfall" id="wf-chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ASSUMPTIONS TAB ═══ -->
+<div id="tab-assump" class="page">
+  <div class="right-panel">
+    <div class="right-panel-title">▸ Full Assumptions Reference (current values)</div>
+    <div class="tbl-wrap"><table id="assump-tbl"></table></div>
+  </div>
+</div>
+
+<!-- ═══ HELP TAB ═══ -->
+<div id="tab-help" class="page">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+    <div class="right-panel">
+      <div class="help-h">How the Model Works</div>
+      <div class="help-body">
+        <p>Built from <b>RelVersiv_Model_v3.xlsx</b>. Every number starts from the same base assumptions — sliders let you explore upside and downside scenarios.</p><br>
+        <p><b>Three layers:</b></p><br>
+        <p><b>1. Revenue Engine</b> — 7 streams driven by entity ramps. Y5 slider sets target; model applies Excel growth curve proportionally.</p><br>
+        <p><b>2. Cost Structure</b> — COGS (30%), Acquisition (20%), staff salaries (7 roles, editable), G&amp;A (rental + overhead), Clinical Trials provision, POD Opex (asset-based + per-session), depreciation.</p><br>
+        <p><b>3. Valuation</b> — DCF (WACC + terminal growth) plus Revenue Multiple exit. Blended EV averages both. Post-money = Exit Value ÷ VC Return.</p>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="help-h">Revenue Stream Formulas</div>
+      <div class="help-body">
+        <b>1. Hospital Therapy</b>
+        <div class="formula-box">Hosp_entities × Episodes/entity × Sessions × Price</div>
+        <b>2. Physio Therapy</b>
+        <div class="formula-box">Physio_entities × Episodes/entity × Sessions × Price</div>
+        <b>3. Corporate Prognosis</b>
+        <div class="formula-box">New_orgs × Emp × Pen × Price<br>+ Prior_orgs × 20% renewal × Emp × Pen × Price<br>+ Prior_orgs × 12% newhires × Emp × Pen × Price</div>
+        <b>4. Hospital POD Sessions</b>
+        <div class="formula-box">Hosp_entities × Episodes × 20% conv × Sessions × ₹250</div>
+        <b>5. Corporate POD Sessions</b>
+        <div class="formula-box">Corp × Emp × Pen × 20% POD_conv × Sessions × ₹250</div>
+        <b>6. Home Rental</b>
+        <div class="formula-box">Hosp_entities × Episodes × 30% × 2 months × ₹5,000</div>
+        <b>7. POD Device Rental (PaaS)</b>
+        <div class="formula-box">(Hosp + Physio) × 60% adoption × ₹20,000/mo × 12</div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="help-h">G&amp;A and Clinical Trials</div>
+      <div class="help-body">
+        <b>G&amp;A (General &amp; Administrative)</b> — Covers office rental, utilities, admin overheads, insurance, and miscellaneous operations costs. Base = ₹24L in Y1 (₹18L rent/lease + ₹6L other), growing at 5%/yr by default. Each year's value is directly editable in the left panel.<br><br>
+        <b>CT (Clinical Trials)</b> — Provision for sponsored clinical studies required for CDSCO validation and regulatory approval pathway. ₹100L budgeted in Y1 (protocol design, site setup, IRB fees), ₹50L in Y2 (data collection, analysis). Y3–Y5 = ₹0 by default but can be set manually. Each year editable independently.<br><br>
+        Both are treated as operating expenses below EBITDA line, reducing EBIT but not EBITDA.
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="help-h">Valuation Methodology</div>
+      <div class="help-body">
+        <b>DCF</b> — Each year's FCF discounted at WACC. Terminal Value uses Gordon Growth Model.
+        <div class="formula-box">TV = Y5_FCF × (1+g) ÷ (WACC − g) ÷ (1+WACC)^5</div>
+        <b>Revenue Multiple Exit</b> — Y5 Revenue × Exit Multiple (10x), discounted at WACC.
+        <div class="formula-box">PV Exit = Y5_Rev × 10x ÷ (1+WACC)^5</div>
+        <b>Blended EV</b> = (DCF EV + PV Exit) ÷ 2<br><br>
+        <b>Post-Money Valuation</b> = Exit EV ÷ VC Return Multiple
+        <div class="formula-box">Post-Money = (Y5 Rev × Exit Multiple) ÷ VC Return</div>
+      </div>
+    </div>
+    <div class="right-panel" style="grid-column:span 2">
+      <div class="help-h">Slider Reference Guide</div>
+      <table>
+        <thead><tr><th style="text-align:left">Slider</th><th style="text-align:left">What it does</th><th>Base</th><th>Range</th></tr></thead>
+        <tbody id="slider-ref-tbl"></tbody>
+      </table>
+    </div>
+    <div class="right-panel" style="grid-column:span 2">
+      <div class="help-h">Glossary</div>
+      <div class="gloss-grid" id="glossary"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+const S = {
+  year: 1,
+  hospitals: 60, physio: 200, corporate: 150,
+  treatmentProtocol: 21,
+  therapySessionPrice: 500,
+  prognosisPenetration: 0.65, prognosisPrice: 750,
+  corpEmployees: 500, corpPODConversion: 0.20, podConversion: 0.20,
+  podSessionPrice: 250,
+  homeRentalAdoption: 0.30, homeRentalDuration: 2, homeRentalPrice: 5000,
+  podRentalAdoption: 0.60, podDeviceRental: 20000,
+  podCost: 600000, headsetCount: 40,
+  podOpexRate: 0.20, podOpexPerSession: 75,
+  cogsRate: 0.30, acqRate: 0.20,
+  wacc: 22, terminalGrowth: 4, revMultiple: 10, vcReturn: 12,
+  salaries: {
+    'Leadership': 160, 'Architect / PM': 36, 'Design Team': 74,
+    'Development Team': 127, 'Medical Senior': 24, 'Medical Junior': 18,
+    'Sr Physio (permanent)': 24,
+  },
+  // G&A per year (Rs Lacs): Y1=24, then grows 5%/yr
+  ga: [24, 25.2, 26.5, 27.8, 29.2],
+  gaGrowth: 5, // % growth per year (applied auto after Y1 if desired)
+  // CT per year (Rs Lacs): Y1=100, Y2=50, rest=0
+  ct: [100, 50, 0, 0, 0],
+};
+
+// ══════════════════════════════════════════════════════
+//  SLIDER DEFINITIONS
+// ══════════════════════════════════════════════════════
+const SL_MARKET = [
+  {key:'hospitals',  label:'Hospital Partners (Y5)', min:5,   max:120, step:5,    base:60,  fmt:v=>v+' hosp'},
+  {key:'physio',     label:'Physio Clinics (Y5)',    min:20,  max:400, step:10,   base:200, fmt:v=>v+' clinics'},
+  {key:'corporate',  label:'Corporate Clients (Y5)', min:10,  max:300, step:10,   base:150, fmt:v=>v+' orgs'},
+  {key:'treatmentProtocol', label:'Treatment Protocol', min:17, max:56, step:1, base:21, fmt:v=>v+' sess'},
+  {key:'therapySessionPrice', label:'Therapy Session Price', min:200, max:1200, step:50, base:500, fmt:v=>'₹'+v},
+  {key:'prognosisPenetration', label:'Prognosis Penetration', min:0.3, max:0.9, step:0.05, base:0.65, fmt:v=>Math.round(v*100)+'%'},
+  {key:'prognosisPrice', label:'Prognosis Report Price', min:300, max:1500, step:50, base:750, fmt:v=>'₹'+v},
+];
+const SL_OPS = [
+  {key:'homeRentalAdoption', label:'Home Rental Adoption', min:0.1, max:0.7, step:0.05, base:0.30, fmt:v=>Math.round(v*100)+'%'},
+  {key:'homeRentalPrice',    label:'Home Rental Monthly',  min:2000, max:12000, step:500, base:5000, fmt:v=>'₹'+v.toLocaleString()},
+  {key:'podDeviceRental',    label:'POD Device Rental/mo', min:10000, max:50000, step:2500, base:20000, fmt:v=>'₹'+v.toLocaleString()},
+  {key:'podRentalAdoption',  label:'POD Rental Adoption',  min:0.2, max:1.0, step:0.05, base:0.60, fmt:v=>Math.round(v*100)+'%'},
+  {key:'cogsRate',           label:'COGS % of Revenue',    min:0.15, max:0.50, step:0.01, base:0.30, fmt:v=>Math.round(v*100)+'%'},
+  {key:'acqRate',            label:'Acquisition % of Rev', min:0.10, max:0.40, step:0.01, base:0.20, fmt:v=>Math.round(v*100)+'%'},
+  {key:'podOpexRate',        label:'POD Opex % asset/yr',  min:0.05, max:0.40, step:0.01, base:0.20, fmt:v=>Math.round(v*100)+'%'},
+  {key:'podOpexPerSession',  label:'POD Opex per Session', min:25, max:200, step:5, base:75, fmt:v=>'₹'+v},
+];
+const SL_CAP = [
+  {key:'podCost',      label:'Cost per POD Unit', min:300000, max:1200000, step:50000, base:600000, fmt:v=>'₹'+(v/100000).toFixed(1)+'L'},
+  {key:'headsetCount', label:'VR Headsets (Y1)',   min:10, max:100, step:5, base:40, fmt:v=>v+' units'},
+];
+const SL_VAL = [
+  {key:'wacc',           label:'WACC',                 min:15, max:35, step:1,   base:22, fmt:v=>v+'%'},
+  {key:'terminalGrowth', label:'Terminal Growth Rate', min:2,  max:8,  step:0.5, base:4,  fmt:v=>v+'%'},
+  {key:'revMultiple',    label:'Revenue Exit Multiple',min:5,  max:20, step:1,   base:10, fmt:v=>v+'x'},
+  {key:'vcReturn',       label:'VC Return Multiple',   min:5,  max:25, step:1,   base:12, fmt:v=>v+'x'},
+];
+const ALL_SLIDERS = [...SL_MARKET,...SL_OPS,...SL_CAP,...SL_VAL];
+const SL_MAP = {};
+ALL_SLIDERS.forEach(s=>SL_MAP[s.key]=s);
+
+// ══════════════════════════════════════════════════════
+//  BASE DATA FROM EXCEL
+// ══════════════════════════════════════════════════════
+const ENTITY_FRAC = {
+  hosp:   [10/60,20/60,35/60,50/60,60/60],
+  physio: [30/200,50/200,120/200,170/200,200/200],
+  corp:   [20/150,50/150,80/150,120/150,150/150],
+};
+const CORPS_BASE   = [20,50,80,120,150];
+const HOSP_EP      = [120,130,140,151,163];
+const PHYSIO_EP    = [60,71,85,101,120];
+const BASE_VR_DEP  = [0.120,0.162,0.352,0.406,0.364];
+const BASE_POD_DEP = [0.216,0.346,0.753,0.991,1.058];
+const BASE_VR_CAP  = [0.300,0.225,0.637,0.487,0.300];
+const BASE_POD_CAP = [1.440,1.080,3.060,2.340,1.440];
+const BASE_POD_NET = [1.224,1.958,4.266,5.615,5.997];
+const BASE_VAR_PHYSIO = [0.024,0.039,0,0,0];
+
+function fixedSalGrowth(baseL,yr){ return baseL*Math.pow(1.10,yr-1); }
+
+// ══════════════════════════════════════════════════════
+//  FINANCIAL ENGINE
+// ══════════════════════════════════════════════════════
+function calcYear(yr) {
+  const i = yr-1;
+  const corpScale   = S.corporate/150;
+  const physioScale = S.physio/200;
+  const hosp   = S.hospitals  * ENTITY_FRAC.hosp[i];
+  const physio = S.physio     * ENTITY_FRAC.physio[i];
+  const corp   = S.corporate  * ENTITY_FRAC.corp[i];
+
+  // Revenue
+  const hospTherapy   = hosp  * HOSP_EP[i]  * S.treatmentProtocol * S.therapySessionPrice / 1e7;
+  const physioTherapy = physio* PHYSIO_EP[i] * S.treatmentProtocol * S.therapySessionPrice / 1e7;
+  const newCorps   = i===0 ? CORPS_BASE[0]*corpScale : (CORPS_BASE[i]-CORPS_BASE[i-1])*corpScale;
+  const priorCorps = i===0 ? 0 : CORPS_BASE[i-1]*corpScale;
+  const corpPrognosis = (
+    newCorps  * S.corpEmployees * S.prognosisPenetration * S.prognosisPrice +
+    priorCorps* 0.20 * S.corpEmployees * S.prognosisPenetration * S.prognosisPrice +
+    priorCorps* 0.12 * S.corpEmployees * S.prognosisPenetration * S.prognosisPrice
+  ) / 1e7;
+  const hospPOD      = hosp * HOSP_EP[i]  * S.podConversion * S.treatmentProtocol * S.podSessionPrice / 1e7;
+  const corpPOD      = corp * S.corpEmployees * S.prognosisPenetration * S.corpPODConversion * S.treatmentProtocol * S.podSessionPrice / 1e7;
+  const homeRental   = hosp * HOSP_EP[i]  * S.homeRentalAdoption * S.homeRentalDuration * S.homeRentalPrice / 1e7;
+  const podDeviceRev = (hosp+physio) * S.podRentalAdoption * S.podDeviceRental * 12 / 1e7;
+  const totalRev = hospTherapy+physioTherapy+corpPrognosis+hospPOD+corpPOD+homeRental+podDeviceRev;
+
+  // COGS / GP
+  const cogs        = totalRev * S.cogsRate;
+  const grossProfit = totalRev - cogs;
+  const acqCost     = totalRev * S.acqRate;
+
+  // Salaries
+  let fixedSalTotal=0; const salBreak={};
+  Object.keys(S.salaries).forEach(role=>{
+    const v=fixedSalGrowth(S.salaries[role],yr)/100;
+    fixedSalTotal+=v; salBreak[role]=v;
+  });
+  const varPhysio=BASE_VAR_PHYSIO[i]*physioScale;
+  salBreak['Variable Physio (Y1-Y2)']=varPhysio;
+  const totalSalary=fixedSalTotal+varPhysio;
+
+  // Depreciation
+  const podCostScale=S.podCost/600000; const headsetScale=S.headsetCount/40;
+  const vrDep  = BASE_VR_DEP[i] * headsetScale;
+  const podDep = BASE_POD_DEP[i]* podCostScale * physioScale;
+  const totalDep=vrDep+podDep;
+
+  // POD Opex
+  const podOpexOnAsset = BASE_POD_NET[i] * podCostScale * physioScale * S.podOpexRate;
+  const totalPodSessions=(hospPOD+corpPOD)*1e7/S.podSessionPrice;
+  const podOpexPerSess  = totalPodSessions*S.podOpexPerSession/1e7;
+  const podOpexTotal    = podOpexOnAsset+podOpexPerSess;
+
+  // EBITDA (before G&A and CT, which go below as separate line items)
+  const ebitda = grossProfit - acqCost - totalSalary - podOpexTotal;
+
+  // G&A and CT (Rs Cr from Lacs input)
+  const gaVal = (S.ga[i] || 0) / 100;
+  const ctVal = (S.ct[i] || 0) / 100;
+
+  // EBIT
+  const ebit = ebitda - totalDep - gaVal - ctVal;
+  const tax  = ebit>0 ? ebit*0.25 : 0;
+  const pat  = ebit-tax;
+
+  // Capex / FCF
+  const vrCapex  = BASE_VR_CAP[i] * headsetScale;
+  const podCapex = BASE_POD_CAP[i]* podCostScale * physioScale;
+  const totalCapex=vrCapex+podCapex;
+  const fcf = ebit - totalCapex;
+
+  return {
+    hospTherapy,physioTherapy,corpPrognosis,hospPOD,corpPOD,homeRental,podDeviceRev,
+    totalRev,cogs,grossProfit,acqCost,
+    fixedSalTotal,varPhysio,totalSalary,salBreak,
+    podOpexOnAsset,podOpexPerSess,podOpexTotal,
+    gaVal,ctVal,
+    ebitda,vrDep,podDep,totalDep,ebit,tax,pat,
+    vrCapex,podCapex,totalCapex,fcf,
+    grossMargin:  totalRev>0?grossProfit/totalRev*100:0,
+    ebitdaMargin: totalRev>0?ebitda/totalRev*100:0,
+    ebitMargin:   totalRev>0?ebit/totalRev*100:0,
+    patMargin:    totalRev>0?pat/totalRev*100:0,
+    totalPatients:Math.round(hosp*HOSP_EP[i]+physio*PHYSIO_EP[i]),
+  };
+}
+
+function calcDCF() {
+  const yrs=  [1,2,3,4,5].map(y=>calcYear(y));
+  const fcfs= yrs.map(y=>y.fcf);
+  const disc= fcfs.map((f,i)=>f/Math.pow(1+S.wacc/100,i+1));
+  const pv=   disc.reduce((a,b)=>a+b,0);
+  const tvFCF=fcfs[4]*(1+S.terminalGrowth/100)/(S.wacc/100-S.terminalGrowth/100);
+  const pvTV= tvFCF/Math.pow(1+S.wacc/100,5);
+  const dcfEV=pv+pvTV;
+  const y5rev=yrs[4].totalRev;
+  const exitEV =y5rev*S.revMultiple;
+  const pvExit =exitEV/Math.pow(1+S.wacc/100,5);
+  const blended=(dcfEV+pvExit)/2;
+  const postMoney=exitEV/S.vcReturn;
+  return{fcfs,disc,pv,pvTV,dcfEV,y5rev,exitEV,pvExit,blended,postMoney,tvPct:dcfEV>0?pvTV/dcfEV*100:0};
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ══════════════════════════════════════════════════════
+const cr  = (v,d=2)=>(v<0?'(':'')+'₹'+Math.abs(v).toFixed(d)+'Cr'+(v<0?')':'');
+const pct = (v,d=1)=>v.toFixed(d)+'%';
+
+function buildSliders(cid,defs){
+  const el=document.getElementById(cid);
+  el.innerHTML=defs.map(d=>`
+    <div class="slider-row">
+      <div class="sl-top">
+        <span class="sl-name">${d.label}</span>
+        <span class="sl-val" id="sv-${d.key}">${d.fmt(S[d.key])}</span>
+      </div>
+      <input type="range" min="${d.min}" max="${d.max}" step="${d.step}" value="${S[d.key]}"
+        id="sr-${d.key}"
+        oninput="S['${d.key}']=parseFloat(this.value);document.getElementById('sv-${d.key}').textContent=SL_MAP['${d.key}'].fmt(parseFloat(this.value));renderAll();">
+      <div class="sl-range"><span>${d.fmt(d.min)}</span><span>${d.fmt(d.max)}</span></div>
+    </div>`).join('');
+}
+
+function buildYearRadios(){
+  const el=document.getElementById('yr-radios');
+  el.innerHTML=[1,2,3,4,5].map(y=>`
+    <div class="yr-radio">
+      <input type="radio" name="yr" id="yr${y}" value="${y}" ${S.year===y?'checked':''} onchange="S.year=${y};renderAll();">
+      <label for="yr${y}">Y${y}</label>
+    </div>`).join('');
+}
+
+const SAL_STEP=5;
+const SAL_DESC={
+  'Leadership':'Founder + senior leadership','Architect / PM':'1 architect / PM',
+  'Design Team':'Head + 2 seniors + 8 juniors','Development Team':'1 lead + 2 sr + 4 mid + 3 jr',
+  'Medical Senior':'1 senior medical professional','Medical Junior':'2 junior medical staff',
+  'Sr Physio (permanent)':'2 senior physiotherapists',
+};
+function buildSalEditor(){
+  const el=document.getElementById('sal-editor');
+  el.innerHTML=Object.entries(S.salaries).map(([role,val])=>`
+    <div class="sal-editor-row">
+      <div class="sal-role">${role}</div>
+      <div class="sal-controls">
+        <button class="sal-btn" onclick="adjSal('${role}',-${SAL_STEP})">−</button>
+        <span class="sal-val-display" id="sv-sal-${role.replace(/[^a-z0-9]/gi,'_')}">${val}</span><span class="sal-lacs">L</span>
+        <button class="sal-btn" onclick="adjSal('${role}',+${SAL_STEP})">+</button>
+      </div>
+    </div>`).join('');
+}
+function adjSal(role,delta){
+  S.salaries[role]=Math.max(0,(S.salaries[role]||0)+delta);
+  const id='sv-sal-'+role.replace(/[^a-z0-9]/gi,'_');
+  const el=document.getElementById(id);
+  if(el)el.textContent=S.salaries[role];
+  renderAll();
+}
+
+function buildGACT(){
+  const el=document.getElementById('ga-ct-section');
+  const gaRows=[1,2,3,4,5].map((_,i)=>`
+    <div class="ga-ct-yr-row">
+      <span class="ga-ct-yr-lbl">Y${i+1}</span>
+      <input class="ga-ct-inp" type="number" min="0" step="1" value="${S.ga[i]}"
+        oninput="S.ga[${i}]=parseFloat(this.value)||0;renderAll();">
+      <span class="ga-ct-unit">L</span>
+    </div>`).join('');
+  const ctRows=[1,2,3,4,5].map((_,i)=>`
+    <div class="ga-ct-yr-row">
+      <span class="ga-ct-yr-lbl">Y${i+1}</span>
+      <input class="ga-ct-inp" type="number" min="0" step="1" value="${S.ct[i]}"
+        oninput="S.ct[${i}]=parseFloat(this.value)||0;renderAll();">
+      <span class="ga-ct-unit">L</span>
+    </div>`).join('');
+
+  el.innerHTML=`
+    <div class="ga-ct-row">
+      <div class="ga-ct-title">G&amp;A — Rental &amp; Overhead (₹ Lacs/yr)</div>
+      ${gaRows}
+      <div style="font-size:9.5px;color:var(--muted);margin-top:4px">Base: ₹18L rent + ₹6L overhead = ₹24L Y1. Edit each year independently.</div>
+    </div>
+    <div class="ga-ct-row">
+      <div class="ga-ct-title">CT — Clinical Trials Provision (₹ Lacs/yr)</div>
+      ${ctRows}
+      <div style="font-size:9.5px;color:var(--muted);margin-top:4px">Base: ₹100L Y1 (setup), ₹50L Y2 (data). Y3–Y5 = ₹0 by default.</div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER P&L
+// ══════════════════════════════════════════════════════
+let salExpanded=false;
+
+function renderPL(){
+  const d =calcYear(S.year);
+  const ys=[1,2,3,4,5].map(y=>calcYear(y));
+  const y=S.year;
+
+  // KPIs (for selected year)
+  const ebitColor=d.ebitdaMargin>=0?'blue':'red';
+  const patColor =d.pat>=0?'purp':'red';
+  document.getElementById('kpi-row').innerHTML=`
+    <div class="kpi teal">
+      <div class="kpi-label">Revenue — Y${y}</div>
+      <div class="kpi-val">${cr(d.totalRev)}</div>
+      <div class="kpi-note">${d.totalPatients.toLocaleString()} patient episodes</div>
+    </div>
+    <div class="kpi ${ebitColor}">
+      <div class="kpi-label">EBITDA — Y${y}</div>
+      <div class="kpi-val">${pct(d.ebitdaMargin)}</div>
+      <div class="kpi-note">${cr(d.ebitda)} absolute</div>
+    </div>
+    <div class="kpi ${patColor}">
+      <div class="kpi-label">PAT — Y${y}</div>
+      <div class="kpi-val">${cr(d.pat)}</div>
+      <div class="kpi-note">${pct(d.patMargin)} net margin</div>
+    </div>
+    <div class="kpi yel">
+      <div class="kpi-label">FCF — Y${y}</div>
+      <div class="kpi-val">${cr(d.fcf)}</div>
+      <div class="kpi-note">EBIT − Capex method</div>
+    </div>`;
+
+  // Table helper: mark selected-year column teal
+  const hdrCls=(yr)=> yr===S.year ? ' class="yr-active"' : '';
+  const tdCls =(yr,neg)=> {
+    const act=yr===S.year?' yr-active-col':'';
+    return ` class="${neg?'neg':act?act:''}"` + (act&&neg?' class="neg yr-active-col"':'');
+  };
+  // Better td class combiner
+  function tdC(yr,v){
+    let c='';
+    if(yr===S.year) c+='yr-active-col ';
+    if(v<0) c+='neg ';
+    else if(v>0) c+='pos ';
+    return c.trim()?` class="${c.trim()}"`:'';
+  }
+
+  const hdrs=`<th>Line Item</th>${[1,2,3,4,5].map(yr=>`<th${hdrCls(yr)}>Y${yr} ₹Cr</th>`).join('')}`;
+
+  const row=(label,vals,cls='',pl='')=>{
+    const cells=vals.map((v,ci)=>{
+      let c=ci+1===S.year?'yr-active-col ':'';
+      if(v<0)c+='neg'; else if(cls==='tot'&&v>0)c+='pos';
+      return `<td${c?` class="${c.trim()}"`:''}>` + (v<0?'('+Math.abs(v).toFixed(2)+')':v.toFixed(2)) + `</td>`;
+    }).join('');
+    return `<tr class="${cls}"><td>${pl}${label}</td>${cells}</tr>`;
+  };
+  const prow=(label,vals)=>{
+    const cells=vals.map((v,ci)=>{
+      const c=ci+1===S.year?'yr-active-col':'';
+      return `<td${c?` class="${c}"`:''}>${v.toFixed(1)}%</td>`;
+    }).join('');
+    return `<tr><td style="color:var(--rmuted);font-size:10px;padding-left:20px">${label}</td>${cells}</tr>`;
+  };
+
+  const salSubRows=[...Object.keys(S.salaries),'Variable Physio (Y1-Y2)'].map(role=>
+    `<tr class="sub-row${salExpanded?' vis':''}"><td style="padding-left:24px;font-size:10px">${role}</td>${ys.map((y,ci)=>{
+      const v=y.salBreak[role]||0;
+      const c=ci+1===S.year?'yr-active-col':'';
+      return `<td${c?` class="${c}"`:''}>${v>0?v.toFixed(2):'—'}</td>`;
+    }).join('')}</tr>`
+  ).join('');
+
+  document.getElementById('pl-table').innerHTML=`
+  <thead><tr>${hdrs}</tr></thead>
+  <tbody>
+    <tr class="sh"><td colspan="6">REVENUE</td></tr>
+    ${row('Hosp Therapy Sessions',ys.map(y=>y.hospTherapy),'','  ')}
+    ${row('Physio Therapy Sessions',ys.map(y=>y.physioTherapy),'','  ')}
+    ${row('Corporate Prognosis',ys.map(y=>y.corpPrognosis),'','  ')}
+    ${row('Hospital POD Sessions',ys.map(y=>y.hospPOD),'','  ')}
+    ${row('Corporate POD Sessions',ys.map(y=>y.corpPOD),'','  ')}
+    ${row('Home Rental',ys.map(y=>y.homeRental),'','  ')}
+    ${row('POD Device Rental (PaaS)',ys.map(y=>y.podDeviceRev),'','  ')}
+    ${row('TOTAL REVENUE',ys.map(y=>y.totalRev),'tot')}
+    <tr class="sh"><td colspan="6">COST OF REVENUE</td></tr>
+    ${row('COGS ('+Math.round(S.cogsRate*100)+'%)',ys.map(y=>-y.cogs),'','  ')}
+    ${row('GROSS PROFIT',ys.map(y=>y.grossProfit),'tot')}
+    ${prow('Gross Margin %',ys.map(y=>y.grossMargin))}
+    <tr class="sh"><td colspan="6">OPERATING EXPENSES</td></tr>
+    ${row('Acquisition Cost ('+Math.round(S.acqRate*100)+'%)',ys.map(y=>-y.acqCost),'','  ')}
+    ${row('POD Opex — Asset-based ('+Math.round(S.podOpexRate*100)+'%/yr)',ys.map(y=>-y.podOpexOnAsset),'','  ')}
+    ${row('POD Opex — Per Session (₹'+S.podOpexPerSession+')',ys.map(y=>-y.podOpexPerSess),'','  ')}
+    <tr class="expandable${salExpanded?' open':''}" onclick="toggleSal()">
+      <td>  Staff Salaries</td>${ys.map((y,ci)=>{const c=ci+1===S.year?'yr-active-col':'';return`<td${c?` class="${c}"`:''}>${(-y.totalSalary).toFixed(2)}</td>`;}).join('')}
+    </tr>
+    ${salSubRows}
+    ${row('EBITDA',ys.map(y=>y.ebitda),'tot')}
+    ${prow('EBITDA Margin %',ys.map(y=>y.ebitdaMargin))}
+    <tr class="sh"><td colspan="6">BELOW-EBITDA CHARGES</td></tr>
+    ${row('VR Headset Depreciation',ys.map(y=>-y.vrDep),'','  ')}
+    ${row('POD Unit Depreciation',ys.map(y=>-y.podDep),'','  ')}
+    ${row('G&A — Rental & Overhead',ys.map(y=>-y.gaVal),'','  ')}
+    ${row('CT — Clinical Trials',ys.map(y=>-y.ctVal),'','  ')}
+    ${row('EBIT',ys.map(y=>y.ebit),'tot')}
+    ${prow('EBIT Margin %',ys.map(y=>y.ebitMargin))}
+    ${row('Tax (25%)',ys.map(y=>-y.tax),'','  ')}
+    ${row('PAT',ys.map(y=>y.pat),'tot')}
+    ${prow('PAT Margin %',ys.map(y=>y.patMargin))}
+    <tr class="sh"><td colspan="6">FREE CASH FLOW</td></tr>
+    ${row('− VR Headset Capex',ys.map(y=>-y.vrCapex),'','  ')}
+    ${row('− POD Unit Capex',ys.map(y=>-y.podCapex),'','  ')}
+    ${row('FREE CASH FLOW (EBIT − Capex)',ys.map(y=>y.fcf),'tot')}
+  </tbody>`;
+}
+function toggleSal(){salExpanded=!salExpanded;renderPL();}
+
+// ══════════════════════════════════════════════════════
+//  RENDER VALUATION
+// ══════════════════════════════════════════════════════
+function renderVal(){
+  const dcf=calcDCF(); const y5=calcYear(5);
+  document.getElementById('val-kpis').innerHTML=`
+    <div class="kpi teal"><div class="kpi-label">DCF Enterprise Value</div><div class="kpi-val">${cr(dcf.dcfEV)}</div><div class="kpi-note">Terminal = ${dcf.tvPct.toFixed(1)}% of EV</div></div>
+    <div class="kpi teal"><div class="kpi-label">PV Revenue Exit</div><div class="kpi-val">${cr(dcf.pvExit)}</div><div class="kpi-note">${S.revMultiple}x Y5 rev · discounted</div></div>
+    <div class="kpi yel"><div class="kpi-label">Blended EV</div><div class="kpi-val">${cr(dcf.blended)}</div><div class="kpi-note">(DCF + Rev Exit) ÷ 2</div></div>
+    <div class="kpi purp"><div class="kpi-label">Post-Money Valuation</div><div class="kpi-val">${cr(dcf.postMoney)}</div><div class="kpi-note">Exit EV ÷ ${S.vcReturn}x VC return</div></div>`;
+  const items=[
+    ...dcf.disc.map((v,i)=>({label:`Y${i+1} FCF (PV)`,val:v,color:'#00c4a7'})),
+    {label:'Terminal Value (PV)',val:dcf.pvTV,color:'#e8a800'},
+    {label:'──── DCF EV',val:dcf.dcfEV,color:'rgba(0,196,167,.25)',border:'1px solid var(--teal)'},
+  ];
+  const maxV=Math.max(...items.map(x=>Math.abs(x.val)))*1.1||1;
+  document.getElementById('wf-chart').innerHTML=items.map(it=>`
+    <div class="wf-row">
+      <div class="wf-lbl">${it.label}</div>
+      <div class="wf-bar" style="width:${Math.max(3,Math.abs(it.val)/maxV*380)}px;background:${it.color};${it.border?'border:'+it.border:''}; color:${it.border?'var(--teal)':'#040e1f'}">
+        ${cr(it.val,2)}
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER ASSUMPTIONS
+// ══════════════════════════════════════════════════════
+function renderAssump(){
+  const rows=[
+    ['Hospital Partners (Y5)',S.hospitals,'Y5 target; ramp 10→20→35→50→target'],
+    ['Physio Clinics (Y5)',S.physio,'Y5 target; ramp 30→50→120→170→target'],
+    ['Corporate Clients (Y5)',S.corporate,'Y5 target; ramp 20→50→80→120→target'],
+    ['Treatment Protocol',S.treatmentProtocol+' sessions','Sessions per patient course'],
+    ['Therapy Session Price','₹'+S.therapySessionPrice,'Per session charged to entity'],
+    ['Prognosis Penetration',Math.round(S.prognosisPenetration*100)+'%','% of assessed who buy report'],
+    ['Prognosis Report Price','₹'+S.prognosisPrice,'One-time AI prognosis fee'],
+    ['Corporate Employees/org',S.corpEmployees,'Avg workforce per corporate'],
+    ['Corporate POD Conversion',Math.round(S.corpPODConversion*100)+'%','% of corp employees doing POD'],
+    ['Hospital POD Conversion',Math.round(S.podConversion*100)+'%','% of therapy episodes → POD'],
+    ['POD Session Price','₹'+S.podSessionPrice,'Per OxyZen POD session'],
+    ['Home Rental Adoption',Math.round(S.homeRentalAdoption*100)+'%','% of hosp episodes → home rental'],
+    ['Home Rental Duration',S.homeRentalDuration+' months','Avg duration of home rental'],
+    ['Home Rental Price','₹'+S.homeRentalPrice+'/mo','Monthly charge to patient'],
+    ['POD Rental Adoption',Math.round(S.podRentalAdoption*100)+'%','% of entities renting a POD'],
+    ['POD Device Rental','₹'+S.podDeviceRental.toLocaleString()+'/mo','Monthly PaaS rental per POD'],
+    ['POD Unit Cost','₹'+(S.podCost/100000).toFixed(1)+'L','Capital cost per POD unit'],
+    ['POD Opex Rate',Math.round(S.podOpexRate*100)+'%/yr','% of net asset value (O2, servicing)'],
+    ['POD Opex per Session','₹'+S.podOpexPerSession,'Per-session variable cost'],
+    ['VR Headsets (Y1)',S.headsetCount,'New headsets in Y1'],
+    ['COGS %',Math.round(S.cogsRate*100)+'%','Device, hosting, content licensing'],
+    ['Acquisition %',Math.round(S.acqRate*100)+'%','Sales, marketing, channel costs'],
+    ['G&A Y1–Y5 (₹L)',S.ga.map((v,i)=>`Y${i+1}:${v}`).join(', '),'Rental + overhead, editable per year'],
+    ['CT Y1–Y5 (₹L)',S.ct.map((v,i)=>`Y${i+1}:${v}`).join(', '),'Clinical trials provision, per year'],
+    ['Salary Growth','10%/yr','Fixed staff from Y1 base each year'],
+    ['POD Depreciation','15% declining bal.','On POD asset base per year'],
+    ['VR Headset Depreciation','40% declining bal.','On headset asset base per year'],
+    ['WACC',S.wacc+'%','Weighted avg cost of capital'],
+    ['Terminal Growth Rate',S.terminalGrowth+'%','Post-Y5 FCF growth (must < WACC)'],
+    ['Revenue Exit Multiple',S.revMultiple+'x','EV/Revenue at exit (Y5)'],
+    ['VC Return Multiple',S.vcReturn+'x','Investor required return'],
+    ['Tax Rate','25%','Applied on positive EBIT only'],
+  ];
+  document.getElementById('assump-tbl').innerHTML=`
+    <thead><tr><th style="text-align:left">Parameter</th><th style="text-align:right">Current</th><th style="text-align:left">Note</th></tr></thead>
+    <tbody>${rows.map(([p,v,d])=>`<tr><td>${p}</td><td style="color:var(--blue);font-family:var(--mono)">${v}</td><td style="text-align:left;font-size:10.5px;color:var(--rtext2)">${d}</td></tr>`).join('')}</tbody>`;
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER HELP
+// ══════════════════════════════════════════════════════
+function renderHelp(){
+  document.getElementById('slider-ref-tbl').innerHTML=ALL_SLIDERS.map(s=>`
+    <tr>
+      <td>${s.label}</td>
+      <td style="text-align:left;font-size:10.5px;color:var(--rtext2)">${getSliderDesc(s.key)}</td>
+      <td style="color:var(--blue);font-family:var(--mono)">${s.fmt(s.base)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--rmuted)">${s.fmt(s.min)} → ${s.fmt(s.max)}</td>
+    </tr>`).join('');
+  const terms=[
+    ['Treatment Protocol','Sessions per patient course. Drives all therapy + POD revenue simultaneously.','#00c4a7'],
+    ['WACC','Discount rate. India healthtech 18–28%. Higher WACC = lower DCF.','#5a7090'],
+    ['G&A','General & Admin. Rental, utilities, insurance, overheads. Editable per year.','#2e7fd4'],
+    ['CT','Clinical Trials provision. Required for CDSCO regulatory pathway.','#8855d0'],
+    ['Terminal Value','DCF value beyond Y5. Gordon Growth Model. Typically 60–80% of DCF EV.','#e8a800'],
+    ['DCF EV','Sum of discounted FCFs + terminal value.','#00c4a7'],
+    ['Blended EV','Average of DCF EV and Revenue Multiple EV.','#8855d0'],
+    ['Revenue Exit Multiple','EV ÷ Annual Revenue. 10x standard for profitable SaaS healthtech.','#8855d0'],
+    ['Post-Money Valuation','Exit EV ÷ VC Return. Your seed/angel anchor.','#e8a800'],
+    ['FCF','Free Cash Flow = EBIT − Capex (mirrors Excel cashflow sheet).','#1aa866'],
+    ['EBITDA','Operating profit before dep, G&A, CT, interest, tax.','#2e7fd4'],
+    ['EBIT','EBITDA minus depreciation, G&A and CT. Economic profit.','#2e7fd4'],
+    ['PAT','Profit After Tax. Bottom line.','#1aa866'],
+    ['PaaS','Platform-as-a-Service. POD rented monthly to entity.','#00c4a7'],
+    ['COGS','Cost of Revenue: headset servicing, cloud, content. 30% of revenue.','#5a7090'],
+    ['Variable Physio','Contractual physios for clinic setup. Only Y1–Y2.','#8a96b0'],
+    ['Declining Balance Depn','Asset × rate each year. POD=15%/yr, Headset=40%/yr.','#5a7090'],
+  ];
+  document.getElementById('glossary').innerHTML=terms.map(([t,d,c])=>`
+    <div class="gloss-card">
+      <div class="gloss-term" style="color:${c}">${t}</div>
+      <div class="gloss-def">${d}</div>
+    </div>`).join('');
+}
+
+function getSliderDesc(key){
+  const m={
+    hospitals:'Y5 hospital count. Excel ramp: 10→20→35→50→target.',
+    physio:'Y5 physio clinic count. Ramp: 30→50→120→170→target.',
+    corporate:'Y5 corporate clients. Ramp: 20→50→80→120→target.',
+    treatmentProtocol:'Sessions per patient course. Affects all therapy, POD and prognosis revenues.',
+    therapySessionPrice:'Price per VR session charged to hospital/physio entity.',
+    prognosisPenetration:'Share of assessed employees/patients who purchase AI prognosis.',
+    prognosisPrice:'One-time AI prognosis fee per person.',
+    homeRentalAdoption:'Share of hospital therapy patients renting headset for home.',
+    homeRentalPrice:'Monthly home headset rental charge.',
+    podDeviceRental:'Monthly PaaS fee per POD device at entity.',
+    podRentalAdoption:'Share of entities (hosp+physio) renting a POD.',
+    cogsRate:'Cost of Revenue as % of total revenue. Base 30%.',
+    acqRate:'Sales + marketing + channel costs as % of revenue. Base 20%.',
+    podCost:'Capital cost to procure one OxyZen POD unit.',
+    podOpexRate:'Annual POD operating cost as % of net asset value.',
+    podOpexPerSession:'Variable cost per POD session (O2, consumables).',
+    headsetCount:'VR headsets deployed Y1. Scales with new entity additions.',
+    wacc:'Discount rate. India healthtech range 18–28%.',
+    terminalGrowth:'Post-Y5 FCF growth rate. Must stay below WACC.',
+    revMultiple:'EV/Revenue at exit. 10x standard for profitable healthtech SaaS.',
+    vcReturn:'Return multiple investor requires. 12x typical India Series A.',
+  };
+  return m[key]||'';
+}
+
+// ══════════════════════════════════════════════════════
+//  XLS EXPORT
+// ══════════════════════════════════════════════════════
+function exportXLS(){
+  const wb=XLSX.utils.book_new();
+  const ys=[1,2,3,4,5].map(y=>calcYear(y));
+  const dcf=calcDCF();
+  const paramData=[
+    ['RELVERSIV VRx — STRESS TEST PARAMETERS','',new Date().toLocaleDateString()],[],
+    ['PARAMETER','VALUE','DESCRIPTION'],
+    ...ALL_SLIDERS.map(s=>[s.label,S[s.key],getSliderDesc(s.key)]),
+    [],['SALARY COMPONENTS (Rs Lacs/yr)','',''],
+    ...Object.entries(S.salaries).map(([r,v])=>[r,v,SAL_DESC[r]||'']),
+    [],['G&A PER YEAR (Rs Lacs)','',''],
+    ...[0,1,2,3,4].map(i=>['Y'+(i+1),S.ga[i],'G&A provision']),
+    [],['CLINICAL TRIALS PER YEAR (Rs Lacs)','',''],
+    ...[0,1,2,3,4].map(i=>['Y'+(i+1),S.ct[i],'CT provision']),
+  ];
+  const wsP=XLSX.utils.aoa_to_sheet(paramData); wsP['!cols']=[{wch:35},{wch:15},{wch:55}];
+  XLSX.utils.book_append_sheet(wb,wsP,'Parameters');
+  const plRows=[
+    ['RELVERSIV VRx — P&L STATEMENT (Rs Crores)'],[],
+    ['Line Item','Y1','Y2','Y3','Y4','Y5'],
+    ['--- REVENUE ---','','','','',''],
+    ['Hosp Therapy',...ys.map(y=>+y.hospTherapy.toFixed(2))],
+    ['Physio Therapy',...ys.map(y=>+y.physioTherapy.toFixed(2))],
+    ['Corporate Prognosis',...ys.map(y=>+y.corpPrognosis.toFixed(2))],
+    ['Hospital POD Sessions',...ys.map(y=>+y.hospPOD.toFixed(2))],
+    ['Corporate POD Sessions',...ys.map(y=>+y.corpPOD.toFixed(2))],
+    ['Home Rental',...ys.map(y=>+y.homeRental.toFixed(2))],
+    ['POD Device Rental (PaaS)',...ys.map(y=>+y.podDeviceRev.toFixed(2))],
+    ['TOTAL REVENUE',...ys.map(y=>+y.totalRev.toFixed(2))],[],
+    ['--- COSTS ---','','','','',''],
+    ['COGS',...ys.map(y=>+y.cogs.toFixed(2))],
+    ['GROSS PROFIT',...ys.map(y=>+y.grossProfit.toFixed(2))],
+    ['Acquisition Cost',...ys.map(y=>+y.acqCost.toFixed(2))],
+    ['POD Opex - Asset-based',...ys.map(y=>+y.podOpexOnAsset.toFixed(2))],
+    ['POD Opex - Per Session',...ys.map(y=>+y.podOpexPerSess.toFixed(2))],
+    ['Staff Salaries',...ys.map(y=>+y.totalSalary.toFixed(2))],
+    ['EBITDA',...ys.map(y=>+y.ebitda.toFixed(2))],
+    ['EBITDA Margin %',...ys.map(y=>+y.ebitdaMargin.toFixed(1))],[],
+    ['--- BELOW EBITDA ---','','','','',''],
+    ['VR Headset Dep',...ys.map(y=>+y.vrDep.toFixed(2))],
+    ['POD Unit Dep',...ys.map(y=>+y.podDep.toFixed(2))],
+    ['G&A - Rental & Overhead',...ys.map(y=>+y.gaVal.toFixed(2))],
+    ['CT - Clinical Trials',...ys.map(y=>+y.ctVal.toFixed(2))],
+    ['EBIT',...ys.map(y=>+y.ebit.toFixed(2))],
+    ['EBIT Margin %',...ys.map(y=>+y.ebitMargin.toFixed(1))],
+    ['Tax (25%)',...ys.map(y=>+y.tax.toFixed(2))],
+    ['PAT',...ys.map(y=>+y.pat.toFixed(2))],
+    ['PAT Margin %',...ys.map(y=>+y.patMargin.toFixed(1))],[],
+    ['--- FCF ---','','','','',''],
+    ['- VR Capex',...ys.map(y=>+y.vrCapex.toFixed(2))],
+    ['- POD Capex',...ys.map(y=>+y.podCapex.toFixed(2))],
+    ['FREE CASH FLOW',...ys.map(y=>+y.fcf.toFixed(2))],
+  ];
+  const wsPL=XLSX.utils.aoa_to_sheet(plRows); wsPL['!cols']=[{wch:30},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,wsPL,'P&L');
+  const valRows=[
+    ['RELVERSIV VRx — VALUATION (Rs Crores)'],[],
+    ['Item','Value','Note'],
+    ['Y5 Revenue',+dcf.y5rev.toFixed(2),'From P&L'],
+    ['Revenue Exit Multiple',S.revMultiple+'x','Applied to Y5 Revenue'],
+    ['Exit Enterprise Value',+dcf.exitEV.toFixed(2),'Y5 Rev × Multiple'],
+    ['PV of Exit',+dcf.pvExit.toFixed(2),'Discounted at WACC'],[],
+    ['PV Operating FCFs',+dcf.pv.toFixed(2),'Y1–Y5 FCFs discounted'],
+    ['Terminal Value (PV)',+dcf.pvTV.toFixed(2),'Gordon Growth, discounted'],
+    ['DCF EV',+dcf.dcfEV.toFixed(2),''],
+    ['Blended EV',+dcf.blended.toFixed(2),'(DCF + PV Exit) ÷ 2'],[],
+    ['Post-Money Valuation',+dcf.postMoney.toFixed(2),'Exit EV ÷ VC Return'],
+    ['VC Return Multiple',S.vcReturn+'x',''],['WACC',S.wacc+'%',''],
+    ['Terminal Growth Rate',S.terminalGrowth+'%',''],
+    [],['--- DCF DETAIL ---','',''],['Year','FCF (Rs Cr)','PV of FCF'],
+    ...[0,1,2,3,4].map(i=>[`Y${i+1}`,+dcf.fcfs[i].toFixed(2),+dcf.disc[i].toFixed(2)]),
+  ];
+  const wsVal=XLSX.utils.aoa_to_sheet(valRows); wsVal['!cols']=[{wch:30},{wch:15},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,wsVal,'Valuation');
+  XLSX.writeFile(wb,'RelVersiv_StressTest_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+// ══════════════════════════════════════════════════════
+//  MASTER RENDER + TABS
+// ══════════════════════════════════════════════════════
+function renderAll(){buildYearRadios();renderPL();renderVal();renderAssump();}
+
+function showTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['pl','val','assump','help'][i]===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// Init
+buildSliders('sl-market',SL_MARKET);
+buildSliders('sl-ops',SL_OPS);
+buildSliders('sl-cap',SL_CAP);
+buildSliders('sl-val',SL_VAL);
+buildSalEditor();
+buildGACT();
+renderHelp();
+renderAll();
+</script>
+</body>
+</html>
