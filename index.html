@@ -1,3 +1,6 @@
+L
+Copy
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,8 +109,12 @@ tr.sub-row td{background:#f8faff;font-size:10px;padding-left:24px;}
 tr.sub-row td:first-child{color:var(--rtext2);}
 tr.sub-row{display:none;}
 tr.sub-row.vis{display:table-row;}
-.yr-active-col{background:rgba(0,196,167,.08)!important;}
-th.yr-active{color:var(--teal)!important;background:rgba(0,196,167,.12)!important;}
+.yr-active-col{background:rgba(0,196,167,.13)!important;color:var(--rtext);}
+th.yr-active{color:var(--teal)!important;background:rgba(0,196,167,.18)!important;font-weight:800;}
+tr.tot td.yr-active-col{background:rgba(0,196,167,.22)!important;color:var(--teal2)!important;}
+tr.sh td.yr-active-col{background:rgba(0,196,167,.22)!important;}
+td.neg.yr-active-col{background:rgba(0,196,167,.13)!important;color:var(--red)!important;}
+td.pos.yr-active-col{background:rgba(0,196,167,.13)!important;color:var(--green)!important;}
 
 .waterfall{display:flex;flex-direction:column;gap:6px;}
 .wf-row{display:flex;align-items:center;gap:8px;}
@@ -585,6 +592,7 @@ function renderPL() {
 
   const hcls = yr => yr === ay ? ' class="yr-active"' : '';
   const hdrs = `<th>Line Item</th>${[1,2,3,4,5].map(yr=>`<th${hcls(yr)}>Y${yr} ₹Cr</th>`).join('')}`;
+  const shRow = label => `<tr class="sh"><td>${label}</td>${[1,2,3,4,5].map(yr=>`<td class="${yr===ay?'yr-active-col':''}"></td>`).join('')}</tr>`;
 
   const row = (label, vals, cls='', pl='') => {
     const cells = vals.map((v,ci) => {
@@ -614,7 +622,7 @@ function renderPL() {
   document.getElementById('pl-table').innerHTML = `
   <thead><tr>${hdrs}</tr></thead>
   <tbody>
-    <tr class="sh"><td colspan="6">REVENUE</td></tr>
+    ${shRow("REVENUE")}
     ${row('Hospital Therapy', ys.map(y=>y.hospTherapy),'','  ')}
     ${row('Physio Therapy', ys.map(y=>y.physioTherapy),'','  ')}
     ${row('Corporate Prognosis', ys.map(y=>y.corpPrognosis),'','  ')}
@@ -623,11 +631,11 @@ function renderPL() {
     ${row('Home Rental', ys.map(y=>y.homeRental),'','  ')}
     ${row('POD Device Rental (PaaS)', ys.map(y=>y.podDeviceRev),'','  ')}
     ${row('TOTAL REVENUE', ys.map(y=>y.totalRev),'tot')}
-    <tr class="sh"><td colspan="6">COST OF REVENUE</td></tr>
+    ${shRow("COST OF REVENUE")}
     ${row('COGS', ys.map(y=>-y.cogs),'','  ')}
     ${row('GROSS PROFIT', ys.map(y=>y.grossProfit),'tot')}
     ${prow('Gross Margin %', ys.map(y=>y.grossMargin))}
-    <tr class="sh"><td colspan="6">OPERATING EXPENSES</td></tr>
+    ${shRow("OPERATING EXPENSES")}
     ${row('Acquisition Cost', ys.map(y=>-y.acqCost),'','  ')}
     ${row('POD Opex — Asset-based', ys.map(y=>-y.podOpexOnAsset),'','  ')}
     ${row('POD Opex — Per Session', ys.map(y=>-y.podOpexPerSess),'','  ')}
@@ -637,7 +645,7 @@ function renderPL() {
     ${salSubRows}
     ${row('EBITDA', ys.map(y=>y.ebitda),'tot')}
     ${prow('EBITDA Margin %', ys.map(y=>y.ebitdaMargin))}
-    <tr class="sh"><td colspan="6">BELOW-EBITDA CHARGES</td></tr>
+    ${shRow("BELOW-EBITDA CHARGES")}
     ${row('VR Headset Depreciation', ys.map(y=>-y.vrDep),'','  ')}
     ${row('POD Unit Depreciation', ys.map(y=>-y.podDep),'','  ')}
     ${row('G&A — Rental & Overhead', ys.map(y=>-y.gaVal),'','  ')}
@@ -647,7 +655,7 @@ function renderPL() {
     ${row('Tax (25%)', ys.map(y=>-y.tax),'','  ')}
     ${row('PAT', ys.map(y=>y.pat),'tot')}
     ${prow('PAT Margin %', ys.map(y=>y.patMargin))}
-    <tr class="sh"><td colspan="6">FREE CASH FLOW</td></tr>
+    ${shRow("FREE CASH FLOW")}
     ${row('− VR Headset Capex', ys.map(y=>-y.vrCapex),'','  ')}
     ${row('− POD Unit Capex', ys.map(y=>-y.podCapex),'','  ')}
     ${row('FREE CASH FLOW (EBIT − Capex)', ys.map(y=>y.fcf),'tot')}
@@ -844,3 +852,4 @@ renderHelp();
 renderAll();
 </script>
 </body>
+</html>
