@@ -66,6 +66,8 @@ body{background:var(--lbg);color:#d0e4f8;font-family:var(--sans);min-height:100v
 .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;}
 .sl-name{font-size:10.5px;color:#c0d4ee;}
 .sl-val{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--teal);}
+.sl-num-inp{background:var(--lbg3);border:1px solid var(--lborder);color:var(--teal);font-family:var(--mono);font-size:11px;font-weight:700;width:70px;padding:2px 5px;border-radius:4px;text-align:right;}
+.sl-num-inp:focus{outline:none;border-color:var(--teal);}
 input[type=range]{-webkit-appearance:none;width:100%;height:3px;border-radius:2px;background:var(--lborder);outline:none;cursor:pointer;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--teal);cursor:pointer;}
 .sl-range{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
@@ -309,8 +311,8 @@ const SAL = [0,1,2,3,4].map(i => {
 // ═══════════════════════════════════════════
 const SL_MARKET = [
   {key:'hospitals',  label:'Hospital Partners',   min:1,   max:150, step:1,   fmt:v=>v+' hosp'},
-  {key:'physio',     label:'Physio Clinics',       min:5,   max:500, step:5,   fmt:v=>v+' clinics'},
-  {key:'corporate',  label:'Corporate Clients',    min:5,   max:400, step:5,   fmt:v=>v+' orgs'},
+  {key:'physio',     label:'Physio Clinics',       min:1,   max:500, step:1,   fmt:v=>v+' clinics'},
+  {key:'corporate',  label:'Corporate Clients',    min:1,   max:400, step:1,   fmt:v=>v+' orgs'},
   {key:'treatmentProtocol', label:'Treatment Protocol', min:17, max:56, step:1, fmt:v=>v+' sess'},
 ];
 const SL_PRICE = [
@@ -496,7 +498,9 @@ function buildSlidersIn(cid, defs) {
     return `<div class="slider-row">
       <div class="sl-top">
         <span class="sl-name">${sl.label}</span>
-        <span class="sl-val" id="sv-${sl.key}">${sl.fmt(v)}</span>
+        <input class="sl-num-inp" type="number" id="sn-${sl.key}"
+          min="${sl.min}" max="${sl.max}" step="${sl.step}" value="${v}"
+          oninput="onSliderNum('${sl.key}',this.value)">
       </div>
       <input type="range" min="${sl.min}" max="${sl.max}" step="${sl.step}" value="${v}"
         id="sr-${sl.key}"
@@ -507,11 +511,23 @@ function buildSlidersIn(cid, defs) {
 }
 
 function onSlider(key, val) {
-  // find slider def
   const all = [...SL_MARKET,...SL_PRICE,...SL_OPS,...SL_CAP,...SL_VAL];
   const sl = all.find(s => s.key === key);
   setVal(sl, val);
-  document.getElementById('sv-' + key).textContent = sl.fmt(val);
+  const ni = document.getElementById('sn-' + key);
+  if (ni) ni.value = val;
+  renderAll();
+}
+
+function onSliderNum(key, rawVal) {
+  const all = [...SL_MARKET,...SL_PRICE,...SL_OPS,...SL_CAP,...SL_VAL];
+  const sl = all.find(s => s.key === key);
+  let val = parseFloat(rawVal);
+  if (isNaN(val)) return;
+  val = Math.min(sl.max, Math.max(sl.min, val));
+  setVal(sl, val);
+  const ri = document.getElementById('sr-' + key);
+  if (ri) ri.value = val;
   renderAll();
 }
 
