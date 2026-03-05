@@ -1,5 +1,5 @@
 
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -89,12 +89,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 .ga-ct-unit{font-size:9px;color:var(--muted);}
 /* table */
 .tbl-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:11px;}
+table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}
 thead tr{background:var(--rbg2);}
-th{padding:7px 9px;text-align:right;font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--rmuted);text-transform:uppercase;border-bottom:2px solid var(--rborder);}
-th:first-child{text-align:left;}
-td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--rborder2);color:var(--rtext2);font-family:var(--mono);font-size:10.5px;}
-td:first-child{text-align:left;color:var(--rtext);font-family:var(--sans);font-size:11px;}
+th{padding:7px 9px;text-align:right;font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--rmuted);text-transform:uppercase;border-bottom:2px solid var(--rborder);width:80px;}
+th:first-child{text-align:left;width:190px;}
+td{padding:5px 9px;text-align:right;border-bottom:1px solid var(--rborder2);color:var(--rtext2);font-family:var(--mono);font-size:10.5px;width:80px;white-space:nowrap;}
+td:first-child{text-align:left;color:var(--rtext);font-family:var(--sans);font-size:11px;width:190px;white-space:normal;}
 tr.sh td{background:#e8f0fb;color:var(--blue);font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:4px 9px;font-weight:600;}
 tr.tot td{background:#f0f4fc;font-weight:700;color:var(--rtext);border-top:2px solid var(--rborder);border-bottom:none;font-size:11px;}
 td.neg{color:var(--red)!important;}td.pos{color:var(--green)!important;}
@@ -939,3 +939,4 @@ renderAll();
 </script>
 </body>
 </html>
+ 
